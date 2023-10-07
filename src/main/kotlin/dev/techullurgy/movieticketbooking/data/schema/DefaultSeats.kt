@@ -15,7 +15,7 @@ object DefaultSeats: Table() {
     val seatPrice = double("seat_price")
 
     init {
-        uniqueIndex(theatreId, screenId, seatQualifier)
+        uniqueIndex(theatreId, screenId, seatRow, seatColumn, seatCategory, seatPrice, seatQualifier)
     }
 
     override val primaryKey: PrimaryKey
