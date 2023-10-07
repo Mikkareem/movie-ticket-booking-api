@@ -1,0 +1,154 @@
+Tables {
+    Movie (created only by Admins only)
+    Theatre (created by theatre owners only) {
+        Screens (Contains all the screens available in the Theatre, minimum 1) {
+            ShowTimings (Contains All the shows with the date and movie and seat layout) {
+                BookableShow (Current status of the show)
+            }
+        }
+    }
+    Bookings ( Manipulated by Users )
+}
+
+Movie {
+    id: Long
+    name: String
+    director: String,
+    actors: String, (Comma Separated),
+    release_year: String,
+    censor_certificate_category: String ("U", "U/A", "A")
+    original_language: String,
+    dubbed_language: String
+    release_date: String,
+    tickets_open_date: String
+}
+
+Theatre {
+    id: Long
+    name: String,
+    address: String,
+    city: String,
+    state: String,
+}
+
+Screens {
+    id: Long
+    name: String,
+    theatre_id: Theatre.id,
+    movie_id: Movie.id
+    default_seat_layout: String (Parsable String separated by ';')
+}
+
+ShowTimings {
+    id: Long
+    screen_id: Screen.id,
+    time: String,
+    customised_seat_layout: String?,
+}
+
+BookableShows {
+    id: Long,
+    theatre_id: Theatre.id,
+    movie_id: Movie.id,
+    show_id: ShowTimings.id
+    date: String,
+    current_seat_layout: String
+}
+
+Customer {
+    id: Long,
+    name: String,
+    // Need to add fields
+}
+
+Tickets {
+    ticket_id: Long,
+    show_id: BookableShows.id,
+    confirmed_seats: String,
+    paid_amount: String,
+    isActive: Boolean,
+    total_seats: Int
+}
+
+Bookings {
+    userId: User.id,
+    ticketId: Tickets.id
+}
+
+DefaultSeats {
+    screen_id: Screen.id,
+    seat_row: int,
+    seat_column: int,
+    seat_category: SeatCategory,
+    seat_qualifier: String,
+
+    Primary(screenid, seatqualifier)
+}
+
+// Implement Later
+BookableSeats {
+    screenid, showid, seatQualifier
+}
+
+ConfirmedSeats {
+    ticket_id, screenid, showid, seatqualifier
+}
+
+route("/recommended_movies" /*GET*/) {}
+route("/search?query={query}" /*GET*/) {}
+route("/theatre_list/{movie}" /*GET*/) {}
+route("/show_list/{movie}/{theatre}" /*GET*/) {}
+route("/seat_details/{movie}/{theatre}/{show}/{date}" /*GET*/) {}
+route("/book_ticket/{movie}/{theatre}/{show}/{date}/{seat_list}" /*POST*/) {}
+route("/my_tickets/{user_id}" /*GET*/) {}
+route("/ticket/{ticket_id}" /*GET*/) {}
+
+1) Recommended Movies
+SELECT * FROM movie ORDER BY release_date, name DESC
+
+2) Search Movie
+SELECT * FROM movie WHERE name = '%{:query}%' ORDER BY release_date, name DESC
+
+3) Theatre List which plays the given movie
+
+SELECT t.*
+FROM theatre t
+JOIN screens s
+    ON (s.theatre_id = t.id)
+JOIN movie m
+    ON (m.id = s.movie_id)
+WHERE m.id = {:movie}
+
+4) Shows List
+
+SELECT b.*
+FROM bookable_shows b
+JOIN theatre t
+    ON (t.id = b.theatre_id)
+JOIN movie m
+    ON (m.id = b.movie_id)
+WHERE m.id = {:movie} and t.id = {:theatre} and date >= today
+
+5) Seat Details
+
+select current_seat_layout
+from bookable_shows
+where id = {:showId}
+
+6) Book Ticket
+
+insert into bookings(
+    show_id = {:showId},
+    confirmed_seats = {:seat_identifiers},
+    paid_amount = {:amount},
+    isActive = true,
+    total_seats = {:seat_count}
+)
+
+update bookable_shows set current_seat_layout=? where id=?
+
+SeatLayout Format
+Row Col Identifier Category Status
+Category - CAT FC,SC,BC
+Status - STA AVL,BKD,NTA,HLD
+"R01C02IDH1CATFCSTAAVL"
