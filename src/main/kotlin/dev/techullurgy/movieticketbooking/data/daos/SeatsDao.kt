@@ -15,9 +15,9 @@ import org.jetbrains.exposed.sql.select
 import java.sql.SQLIntegrityConstraintViolationException
 
 interface SeatsDao {
-    suspend fun addSeat(theatreId: Long, screenId: Long)
+    suspend fun addSeat(theatreId: Long, screenId: Long, seat: Seat)
 
-    suspend fun bookSeat(bookableShowId: Long, customerId: Long, date: LocalDate)
+    suspend fun bookSeat(bookableShowId: Long, customerId: Long, date: LocalDate, defaultSeatId: Long)
 
     suspend fun getAvailableSeatsForTheShow(
         theatreId: Long,
@@ -28,11 +28,11 @@ interface SeatsDao {
 }
 
 class SeatsDaoImpl : SeatsDao {
-    override suspend fun addSeat(theatreId: Long, screenId: Long) {
+    override suspend fun addSeat(theatreId: Long, screenId: Long, seat: Seat) {
         TODO("Not yet implemented")
     }
 
-    override suspend fun bookSeat(bookableShowId: Long, customerId: Long, date: LocalDate) {
+    override suspend fun bookSeat(bookableShowId: Long, customerId: Long, date: LocalDate, defaultSeatId: Long) {
         TODO("Not yet implemented")
     }
 
@@ -67,7 +67,6 @@ class SeatsDaoImpl : SeatsDao {
 
 private fun ResultRow.toSeat(): Seat {
     return Seat(
-
         seatRow = this[DefaultSeats.seatRow],
         seatColumn = this[DefaultSeats.seatColumn],
         seatCategory = this[DefaultSeats.seatCategory],
