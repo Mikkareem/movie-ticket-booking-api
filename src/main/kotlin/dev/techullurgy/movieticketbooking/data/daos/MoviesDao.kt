@@ -17,7 +17,6 @@ interface MoviesDao {
 
 class MoviesDaoImpl: MoviesDao {
     override suspend fun addMovie(movie: Movie): Boolean {
-        if(movie.id == -1L) return false
         dbQuery {
             MovieTable.insert {
                 it[name] = movie.name

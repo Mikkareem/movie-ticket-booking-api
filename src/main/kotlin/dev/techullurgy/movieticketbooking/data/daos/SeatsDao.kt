@@ -11,6 +11,7 @@ import dev.techullurgy.movieticketbooking.plugins.dbQuery
 import kotlinx.datetime.LocalDate
 import org.jetbrains.exposed.exceptions.ExposedSQLException
 import org.jetbrains.exposed.sql.*
+import org.jetbrains.exposed.sql.transactions.TransactionManager
 import java.sql.SQLIntegrityConstraintViolationException
 
 interface SeatsDao {
@@ -29,35 +30,58 @@ interface SeatsDao {
         showId: Long,
         date: LocalDate
     ): ServiceResult<List<Seat>>
+
+    suspend fun getAllSeatsForTheShow(
+        theatreId: Long,
+        screenId: Long,
+        showId: Long,
+        date: LocalDate
+    ): ServiceResult<List<Seat>>
 }
 
 class SeatsDaoImpl : SeatsDao {
     override suspend fun addSeat(theatreId: Long, screenId: Long, seat: Seat): ServiceResult<Long> {
-        return try {
-            dbQuery {
-                DefaultSeats.insert {
-                    it[seatRow] = seat.seatRow
-                    it[seatColumn] = seat.seatColumn
-                    it[seatPrice] = seat.seatPrice
-                    it[seatCategory] = seat.seatCategory
-                    it[seatQualifier] = seat.seatQualifier
-                    it[this.screenId] = screenId
-                    it[this.theatreId] = theatreId
-                }
-                val seatId = DefaultSeats
-                    .select {
-                        (DefaultSeats.seatRow eq seat.seatRow) and (DefaultSeats.seatColumn eq seat.seatColumn) and
-                                (DefaultSeats.seatCategory eq seat.seatCategory) and (DefaultSeats.seatPrice eq seat.seatPrice) and
-                                (DefaultSeats.seatQualifier eq seat.seatQualifier) and (DefaultSeats.screenId eq screenId) and
-                                (DefaultSeats.theatreId eq theatreId)
-                    }.map { it[DefaultSeats.id] }.first()
-                ServiceResult.Success(seatId)
+        val isTransactionPresent = TransactionManager.currentOrNull() != null
+
+        val tryBlock = {
+            DefaultSeats.insert {
+                it[seatRow] = seat.seatRow
+                it[seatColumn] = seat.seatColumn
+                it[seatPrice] = seat.seatPrice
+                it[seatCategory] = seat.seatCategory
+                it[seatQualifier] = seat.seatQualifier
+                it[this.screenId] = screenId
+                it[this.theatreId] = theatreId
             }
-        } catch (e: Exception) {
+            val seatId = DefaultSeats
+                .select {
+                    (DefaultSeats.seatRow eq seat.seatRow) and (DefaultSeats.seatColumn eq seat.seatColumn) and
+                            (DefaultSeats.seatCategory eq seat.seatCategory) and (DefaultSeats.seatPrice eq seat.seatPrice) and
+                            (DefaultSeats.seatQualifier eq seat.seatQualifier) and (DefaultSeats.screenId eq screenId) and
+                            (DefaultSeats.theatreId eq theatreId)
+                }.map { it[DefaultSeats.id] }.first()
+            ServiceResult.Success(seatId)
+        }
+
+        val catchBlock: (Exception) -> ServiceResult.Failure<Long> = { e: Exception ->
             val original = (e as? ExposedSQLException)?.cause
             when(original) {
                 is SQLIntegrityConstraintViolationException -> ServiceResult.Failure(ErrorCodes.SEAT_ALREADY_CREATED)
                 else -> ServiceResult.Failure(ErrorCodes.DATABASE_ERROR)
+            }
+        }
+
+        return if(isTransactionPresent) {
+            try {
+                tryBlock()
+            } catch (e: Exception) {
+                catchBlock(e)
+            }
+        } else {
+            try {
+                dbQuery { tryBlock() }
+            } catch (e: Exception) {
+                catchBlock(e)
             }
         }
     }
@@ -109,31 +133,91 @@ class SeatsDaoImpl : SeatsDao {
         showId: Long,
         date: LocalDate
     ): ServiceResult<List<Seat>> {
-        return try {
-            dbQuery {
-                val bookableShowId = BookableShows
-                    .slice(BookableShows.id).select {
-                        (BookableShows.showId eq showId) and (BookableShows.screenId eq screenId) and
-                                (BookableShows.theatreId eq theatreId) and (BookableShows.showDate eq date)
-                    }.map { it[BookableShows.id] }.firstOrNull()
-                bookableShowId?.let {
-                    val bookedSeats = ConfirmedSeats.slice(ConfirmedSeats.seatId)
-                        .select { ConfirmedSeats.showId eq it }.map { it[ConfirmedSeats.seatId] }
-                    val availableSeats = DefaultSeats.select {
-                        (DefaultSeats.theatreId eq theatreId) and (DefaultSeats.screenId eq screenId) and
-                                (DefaultSeats.id notInList bookedSeats)
-                    }.map { it.toSeat() }
-                    ServiceResult.Success(availableSeats)
-                } ?: return@dbQuery ServiceResult.Failure(ErrorCodes.BOOKING_NOT_YET_OPEN_FOR_SHOW)
-            }
-        } catch (e: Exception) {
+
+        val tryBlock = {
+            val bookableShowId = BookableShows
+                .slice(BookableShows.id).select {
+                    (BookableShows.showId eq showId) and (BookableShows.screenId eq screenId) and
+                            (BookableShows.theatreId eq theatreId) and (BookableShows.showDate eq date)
+                }.map { it[BookableShows.id] }.firstOrNull()
+            bookableShowId?.let {
+                val bookedSeats = ConfirmedSeats.slice(ConfirmedSeats.seatId)
+                    .select { ConfirmedSeats.showId eq it }.map { it[ConfirmedSeats.seatId] }
+                val availableSeats = DefaultSeats.select {
+                    (DefaultSeats.theatreId eq theatreId) and (DefaultSeats.screenId eq screenId) and
+                            (DefaultSeats.id notInList bookedSeats)
+                }.map { it.toSeat() }
+                ServiceResult.Success(availableSeats)
+            } ?: ServiceResult.Failure(ErrorCodes.BOOKING_NOT_YET_OPEN_FOR_SHOW)
+        }
+
+        val catchBlock: (Exception) -> ServiceResult.Failure<List<Seat>> = {
             ServiceResult.Failure(ErrorCodes.DATABASE_ERROR)
+        }
+
+        val isTransactionPresent = TransactionManager.currentOrNull() != null
+
+        return if(isTransactionPresent) {
+            try {
+                tryBlock()
+            } catch (e: Exception) {
+                catchBlock(e)
+            }
+        } else {
+            try {
+                dbQuery { tryBlock() }
+            } catch (e: Exception) {
+                catchBlock(e)
+            }
+        }
+    }
+
+    override suspend fun getAllSeatsForTheShow(
+        theatreId: Long,
+        screenId: Long,
+        showId: Long,
+        date: LocalDate
+    ): ServiceResult<List<Seat>> {
+
+        val tryBlock = {
+            val bookableShowId = BookableShows
+                .slice(BookableShows.id).select {
+                    (BookableShows.showId eq showId) and (BookableShows.screenId eq screenId) and
+                            (BookableShows.theatreId eq theatreId) and (BookableShows.showDate eq date)
+                }.map { it[BookableShows.id] }.firstOrNull()
+            bookableShowId?.let {
+                val seats = DefaultSeats.select {
+                    (DefaultSeats.theatreId eq theatreId) and (DefaultSeats.screenId eq screenId)
+                }.map { it.toSeat() }
+                ServiceResult.Success(seats)
+            } ?: ServiceResult.Failure(ErrorCodes.BOOKING_NOT_YET_OPEN_FOR_SHOW)
+        }
+
+        val catchBlock: (Exception) -> ServiceResult.Failure<List<Seat>> = {
+            ServiceResult.Failure(ErrorCodes.DATABASE_ERROR)
+        }
+
+        val isTransactionPresent = TransactionManager.currentOrNull() != null
+
+        return if(isTransactionPresent) {
+            try {
+                tryBlock()
+            } catch (e: Exception) {
+                catchBlock(e)
+            }
+        } else {
+            try {
+                dbQuery { tryBlock() }
+            } catch (e: Exception) {
+                catchBlock(e)
+            }
         }
     }
 }
 
 private fun ResultRow.toSeat(): Seat {
     return Seat(
+        id = this[DefaultSeats.id],
         seatRow = this[DefaultSeats.seatRow],
         seatColumn = this[DefaultSeats.seatColumn],
         seatCategory = this[DefaultSeats.seatCategory],

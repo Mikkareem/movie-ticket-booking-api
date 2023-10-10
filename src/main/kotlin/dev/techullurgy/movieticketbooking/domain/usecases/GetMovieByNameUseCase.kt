@@ -5,7 +5,7 @@ import dev.techullurgy.movieticketbooking.domain.models.Movie
 import dev.techullurgy.movieticketbooking.domain.utils.ErrorCodes
 import dev.techullurgy.movieticketbooking.domain.utils.ServiceResult
 
-class GetMovieByName(
+class GetMovieByNameUseCase(
     private val moviesDao: MoviesDao
 ) {
     suspend operator fun invoke(name: String): ServiceResult<List<Movie>> {

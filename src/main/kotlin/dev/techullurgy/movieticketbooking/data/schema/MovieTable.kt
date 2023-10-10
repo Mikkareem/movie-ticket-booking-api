@@ -22,6 +22,10 @@ object MovieTable: Table(name = "movies") {
     val releaseDate: Column<LocalDate> = date("release_date")
     val ticketsOpenDate: Column<LocalDateTime> = datetime("tickets_open_date")
 
+    init {
+        uniqueIndex(name, originalLanguage, dubbedLanguage)
+    }
+
     override val primaryKey: PrimaryKey
         get() = PrimaryKey(id, name = "PK_Movie")
 }

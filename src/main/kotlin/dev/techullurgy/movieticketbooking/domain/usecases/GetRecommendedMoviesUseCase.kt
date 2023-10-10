@@ -5,7 +5,7 @@ import dev.techullurgy.movieticketbooking.domain.models.Movie
 import dev.techullurgy.movieticketbooking.domain.utils.ErrorCodes
 import dev.techullurgy.movieticketbooking.domain.utils.ServiceResult
 
-class GetRecommendedMovies(
+class GetRecommendedMoviesUseCase(
 //    private val customerDao: CustomerDao,
     private val moviesDao: MoviesDao
 ) {

@@ -1,7 +1,6 @@
 package dev.techullurgy.movieticketbooking.plugins
 
-import dev.techullurgy.movieticketbooking.routes.movieSearchByNameRoute
-import dev.techullurgy.movieticketbooking.routes.recommendedMoviesRoute
+import dev.techullurgy.movieticketbooking.routes.*
 import io.ktor.server.application.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
@@ -9,17 +8,21 @@ import io.ktor.server.routing.*
 
 fun Application.configureRouting() {
     routing {
+        route("/create/THEATRE/{name}/{address}/{city}/{state}" /*POST*/) { createTheatreRoute() }
+        route("/create/SCREEN/{theatre}/{name}/{rows}/{cols}" /*POST*/) { createScreenRoute() }
+        route("/create/SEATS/{theatre}/{screen}" /*POST*/) { createSeatsRoute() }
+        route("/create/SHOW/{theatre}/{screen}/{time}" /*POST*/) { createShowTimingRoute() }
         route("/recommended_movies" /*GET*/) { recommendedMoviesRoute() }
-        route("/search/MOVIE/{name}") { movieSearchByNameRoute() }
-        route("/search/THEATRE/{name}") {}
-        route("/theatre_list/{movie}" /*GET*/) {}
-        route("/show_list/{movie}/{theatre}" /*GET*/) {}
-        route("/seat_details/{movie}/{theatre}/{show}/{date}" /*GET*/) {}
+        route("/search/MOVIE/{name}" /*GET*/) { movieSearchByNameRoute() }
+        route("/search/THEATRE/{name}" /*GET*/) {}
+        route("/theatre_list/{movie}" /*GET*/) { getTheatresListForMovieRoute() }
+        route("/show_list/{movie}/{theatre}" /*GET*/) { getBookableShowListFromTheatre() }
+        route("/seat_details/{movie}/{theatre}/{show}/{date}" /*GET*/) { getSeatDetailsRoute() }
         route("/book_ticket/{movie}/{theatre}/{show}/{date}/{seat_list}" /*POST*/) {}
         route("/my_tickets/{user_id}" /*GET*/) {}
         route("/ticket/{ticket_id}" /*GET*/) {}
 
-        route("/replace") {
+        route("/test") {
             get {
                 val parameters = call.parameters
                 if(parameters["prefix"] != null) {

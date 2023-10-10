@@ -1,6 +1,6 @@
 package dev.techullurgy.movieticketbooking.routes
 
-import dev.techullurgy.movieticketbooking.domain.usecases.GetRecommendedMovies
+import dev.techullurgy.movieticketbooking.domain.usecases.GetRecommendedMoviesUseCase
 import dev.techullurgy.movieticketbooking.domain.utils.ServiceResult
 import io.ktor.http.*
 import io.ktor.server.application.*
@@ -9,7 +9,7 @@ import io.ktor.server.routing.*
 import org.koin.ktor.ext.inject
 
 fun Route.recommendedMoviesRoute() {
-    val getRecommendedMovies by inject<GetRecommendedMovies>()
+    val getRecommendedMovies by inject<GetRecommendedMoviesUseCase>()
 
     get {
         when(val result = getRecommendedMovies()) {

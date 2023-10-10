@@ -34,7 +34,7 @@ dependencies {
     implementation("org.jetbrains.exposed:exposed-kotlin-datetime:$exposedVersion")
 
     // Database
-    implementation("com.h2database:h2:2.1.214")
+    implementation("com.h2database:h2:2.2.224")
 //    implementation("mysql:mysql-connector-java:8.0.30")
 
     testImplementation(kotlin("test"))
