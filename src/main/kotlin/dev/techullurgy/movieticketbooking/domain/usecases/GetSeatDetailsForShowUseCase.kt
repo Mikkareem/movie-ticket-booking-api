@@ -1,7 +1,6 @@
 package dev.techullurgy.movieticketbooking.domain.usecases
 
 import dev.techullurgy.movieticketbooking.data.daos.SeatsDao
-import dev.techullurgy.movieticketbooking.domain.models.Seat
 import dev.techullurgy.movieticketbooking.domain.models.SeatStatus
 import dev.techullurgy.movieticketbooking.domain.models.SeatWithStatus
 import dev.techullurgy.movieticketbooking.domain.utils.ServiceResult
