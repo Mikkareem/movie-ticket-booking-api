@@ -18,7 +18,7 @@ fun Route.getBookableMoviesRoute() {
         if(result is ServiceResult.Failure) {
             call.respond(message = GetBookableMoviesFailureResponse(result.errorCode.message), status = HttpStatusCode.BadRequest)
         } else {
-            call.respond(message = (result as ServiceResult.Success).data, status = HttpStatusCode.OK)
+            call.respond(message = GetBookableMoviesSuccessResponse((result as ServiceResult.Success).data), status = HttpStatusCode.OK)
         }
     }
 }
