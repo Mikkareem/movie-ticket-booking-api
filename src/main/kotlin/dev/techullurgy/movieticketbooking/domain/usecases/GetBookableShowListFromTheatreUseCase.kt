@@ -13,7 +13,7 @@ class GetBookableShowListFromTheatreUseCase(
             return ServiceResult.Failure(datesResult.errorCode)
         }
 
-        val dates = (datesResult as ServiceResult.Success).data
+        val dates = (datesResult as ServiceResult.Success).data.toSet()
 
         val result = mutableListOf<TheatreFullDetail>().apply {
             for (date in dates) {

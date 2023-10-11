@@ -15,7 +15,7 @@ fun Route.getSeatDetailsRoute() {
     val getSeatDetailsForShow by inject<GetSeatDetailsForShowUseCase>()
 
     get {
-        val theatreId = call.parameters["theatreId"]?.let {
+        val theatreId = call.parameters["theatre"]?.let {
             try {
                 it.toLong()
             } catch (e: NumberFormatException) {
@@ -27,7 +27,7 @@ fun Route.getSeatDetailsRoute() {
             return@get
         }
 
-        val screenId = call.parameters["screenId"]?.let {
+        val screenId = call.parameters["screen"]?.let {
             try {
                 it.toLong()
             } catch (e: NumberFormatException) {
@@ -39,7 +39,7 @@ fun Route.getSeatDetailsRoute() {
             return@get
         }
 
-        val showId = call.parameters["showId"]?.let {
+        val showId = call.parameters["show"]?.let {
             try {
                 it.toLong()
             } catch (e: NumberFormatException) {
@@ -51,7 +51,7 @@ fun Route.getSeatDetailsRoute() {
             return@get
         }
 
-        val orderDate = call.parameters["orderDate"]?.let { LocalDate.parse(it) } ?: run {
+        val orderDate = call.parameters["date"]?.let { LocalDate.parse(it) } ?: run {
             call.respond(message = "Order date is missing", status = HttpStatusCode.BadRequest)
             return@get
         }

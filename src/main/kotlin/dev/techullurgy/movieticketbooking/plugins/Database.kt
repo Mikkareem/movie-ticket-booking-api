@@ -48,6 +48,7 @@ private fun initialData() {
             it[releaseYear] = 2023
             it[censor] = Censor.UA
             it[originalLanguage] = Language.TAMIL
+            it[dubbedLanguage] = Language.TAMIL
             it[releaseDate] = LocalDate(2023, Month.OCTOBER, 19)
             it[ticketsOpenDate] = LocalDateTime(2023, Month.OCTOBER, 5, 1, 0, 0)
         }
@@ -103,6 +104,7 @@ private fun initialData() {
             it[releaseYear] = 2022
             it[censor] = Censor.UA
             it[originalLanguage] = Language.TAMIL
+            it[dubbedLanguage] = Language.TAMIL
             it[releaseDate] = LocalDate(2022, Month.OCTOBER, 19)
             it[ticketsOpenDate] = LocalDateTime(2022, Month.OCTOBER, 5, 1, 0, 0)
         }

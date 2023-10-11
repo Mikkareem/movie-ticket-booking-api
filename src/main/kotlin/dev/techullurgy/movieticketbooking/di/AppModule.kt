@@ -18,4 +18,7 @@ val appModule = module {
     single { CreateShowTimingUseCase(get()) }
     single { GetTheatresListForMovieUseCase(get()) }
     single { GetBookableShowListFromTheatreUseCase(get()) }
+    single { OpenTicketsForTheShowUseCase(get()) }
+    single { GetBookableMoviesUseCase(get()) }
+    single { UpdateMovieInScreenUseCase(get()) }
 }

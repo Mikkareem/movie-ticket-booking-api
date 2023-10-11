@@ -1,7 +1,11 @@
 package dev.techullurgy.movieticketbooking.data.daos
 
+import dev.techullurgy.movieticketbooking.data.schema.BookableShows
 import dev.techullurgy.movieticketbooking.data.schema.MovieTable
 import dev.techullurgy.movieticketbooking.domain.models.Movie
+import dev.techullurgy.movieticketbooking.domain.utils.ErrorCodes
+import dev.techullurgy.movieticketbooking.domain.utils.ServiceResult
+import dev.techullurgy.movieticketbooking.domain.utils.today
 import dev.techullurgy.movieticketbooking.plugins.dbQuery
 import org.jetbrains.exposed.sql.*
 
@@ -13,6 +17,8 @@ interface MoviesDao {
     suspend fun getMovieById(id: Long): Movie?
 
     suspend fun getAllMovies(): List<Movie>
+
+    suspend fun getBookableMovies(): ServiceResult<List<Movie>>
 }
 
 class MoviesDaoImpl: MoviesDao {
@@ -57,6 +63,25 @@ class MoviesDaoImpl: MoviesDao {
                 .selectAll()
                 .orderBy(MovieTable.releaseDate, order = SortOrder.DESC_NULLS_LAST)
                 .map { it.toMovie() }
+        }
+    }
+
+    override suspend fun getBookableMovies(): ServiceResult<List<Movie>> {
+        return try {
+            dbQuery {
+                val moviesList = (BookableShows innerJoin MovieTable)
+                    .slice(MovieTable.columns)
+                    .select {
+                        BookableShows.showDate greaterEq today()
+                    }
+                    .distinct()
+                    .map {
+                        it.toMovie()
+                    }.toSet().toList()
+                ServiceResult.Success(moviesList)
+            }
+        } catch (e: Exception) {
+            ServiceResult.Failure(ErrorCodes.DATABASE_ERROR)
         }
     }
 }

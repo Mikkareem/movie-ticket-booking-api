@@ -20,7 +20,6 @@ interface SeatsDao {
     suspend fun bookSeats(
         bookableShowId: Long,
         customerId: Long,
-        date: LocalDate,
         defaultSeatIds: Set<Long>
     ): ServiceResult<Long>
 
@@ -89,40 +88,55 @@ class SeatsDaoImpl : SeatsDao {
     override suspend fun bookSeats(
         bookableShowId: Long,
         customerId: Long,
-        date: LocalDate,
         defaultSeatIds: Set<Long>
     ): ServiceResult<Long> {
-        return try {
-            dbQuery {
-                val screenId = BookableShows.select { BookableShows.id eq bookableShowId }.map { it[BookableShows.screenId] }.first()
-                val totalAmount = DefaultSeats
-                    .slice(DefaultSeats.seatPrice.sum())
-                    .select { DefaultSeats.id inList defaultSeatIds }.map { it[DefaultSeats.seatPrice.sum()]!! }.first()
-                val ticketHash = generateTicketHash()
-                Tickets.insert {
-                    it[showId] = bookableShowId
-                    it[totalSeats] = defaultSeatIds.size
-                    it[customer] = customerId
-                    it[isActive] = true
-                    it[hash] = ticketHash
-                    it[paidAmount] = totalAmount
-                }
-                val ticketId = Tickets.select { Tickets.hash eq ticketHash }.map { it[Tickets.ticketId] }.first()
-                defaultSeatIds.forEach { seatId ->
-                    ConfirmedSeats.insert {
-                        it[this.ticketId] = ticketId
-                        it[this.screenId] = screenId
-                        it[this.seatId] = seatId
-                        it[showId] = bookableShowId
-                    }
-                }
-                ServiceResult.Success(ticketId)
+        val isTransactionPresent = TransactionManager.currentOrNull() != null
+
+        val tryBlock = {
+            val screenId = BookableShows.select { BookableShows.id eq bookableShowId }.map { it[BookableShows.screenId] }.first()
+            val totalAmount = DefaultSeats
+                .slice(DefaultSeats.seatPrice.sum())
+                .select { DefaultSeats.id inList defaultSeatIds }.map { it[DefaultSeats.seatPrice.sum()]!! }.first()
+            val ticketHash = generateTicketHash()
+            Tickets.insert {
+                it[showId] = bookableShowId
+                it[totalSeats] = defaultSeatIds.size
+                it[customer] = customerId
+                it[isActive] = true
+                it[hash] = ticketHash
+                it[paidAmount] = totalAmount
             }
-        } catch (e: Exception) {
+            val ticketId = Tickets.select { Tickets.hash eq ticketHash }.map { it[Tickets.ticketId] }.first()
+            defaultSeatIds.forEach { seatId ->
+                ConfirmedSeats.insert {
+                    it[this.ticketId] = ticketId
+                    it[this.screenId] = screenId
+                    it[this.seatId] = seatId
+                    it[showId] = bookableShowId
+                }
+            }
+            ServiceResult.Success(ticketId)
+        }
+
+        val catchBlock: (Exception) -> ServiceResult.Failure<Long> = { e ->
             val original = (e as? ExposedSQLException)?.cause
             when(original) {
                 is SQLIntegrityConstraintViolationException -> ServiceResult.Failure(ErrorCodes.SEAT_ALREADY_BOOKED)
                 else -> ServiceResult.Failure(ErrorCodes.DATABASE_ERROR)
+            }
+        }
+
+        return if(isTransactionPresent) {
+            try {
+                tryBlock()
+            } catch (e: Exception) {
+                catchBlock(e)
+            }
+        } else {
+            try {
+                dbQuery { tryBlock() }
+            } catch (e: Exception) {
+                catchBlock(e)
             }
         }
     }

@@ -13,6 +13,7 @@ import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.TransactionManager
+import org.jetbrains.exposed.sql.update
 import java.sql.SQLIntegrityConstraintViolationException
 
 interface TheatresDao {
@@ -62,6 +63,10 @@ interface TheatresDao {
     suspend fun getBookableShowsFromTheatreForMovie(
         theatreId: Long, movieId: Long, date: LocalDate
     ): ServiceResult<TheatreFullDetail>
+
+    suspend fun updateMovieFromScreen(
+        theatreId: Long, screenId: Long, movieId: Long
+    ): ServiceResult<Boolean>
 }
 
 internal class TheatresDaoImpl(
@@ -196,7 +201,6 @@ internal class TheatresDaoImpl(
                 is SQLIntegrityConstraintViolationException -> {
                     ServiceResult.Failure(ErrorCodes.THEATRE_ALREADY_EXISTS)
                 }
-
                 else -> {
                     ServiceResult.Failure(ErrorCodes.DATABASE_ERROR)
                 }
@@ -415,6 +419,44 @@ internal class TheatresDaoImpl(
             }
         } catch (e: Exception) {
             ServiceResult.Failure(ErrorCodes.DATABASE_ERROR)
+        }
+    }
+
+    override suspend fun updateMovieFromScreen(theatreId: Long, screenId: Long, movieId: Long): ServiceResult<Boolean> {
+        return try {
+            dbQuery {
+                val count = ScreenTable.update(
+                    where = {
+                        (ScreenTable.theatreId eq theatreId) and (ScreenTable.id eq screenId)
+                    }
+                ) {
+                    it[ScreenTable.movieId] = movieId
+                }
+
+                if(count > 0) {
+                    ServiceResult.Success(true)
+                } else {
+                    ServiceResult.Failure(ErrorCodes.SCREEN_NOT_EXISTS)
+                }
+            }
+        } catch (e: Exception) {
+            when (val original = (e as? ExposedSQLException)?.cause) {
+                is SQLIntegrityConstraintViolationException -> {
+                    val message = original.message!!.lowercase()
+                    if (message.contains("referential integrity") || message.contains("foreign key")) {
+                        if (message.contains("fk_${ScreenTable.tableName.lowercase()}_${ScreenTable.movieId.name.lowercase()}")) {
+                            ServiceResult.Failure(ErrorCodes.MOVIE_NOT_EXISTS)
+                        } else {
+                            ServiceResult.Failure(ErrorCodes.DATABASE_ERROR)
+                        }
+                    } else {
+                        ServiceResult.Failure(ErrorCodes.DATABASE_ERROR)
+                    }
+                }
+                else -> {
+                    ServiceResult.Failure(ErrorCodes.DATABASE_ERROR)
+                }
+            }
         }
     }
 }
