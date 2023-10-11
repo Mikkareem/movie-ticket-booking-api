@@ -21,4 +21,5 @@ val appModule = module {
     single { OpenTicketsForTheShowUseCase(get()) }
     single { GetBookableMoviesUseCase(get()) }
     single { UpdateMovieInScreenUseCase(get()) }
+    single { BookTicketUseCase(get(), get()) }
 }

@@ -36,6 +36,13 @@ interface SeatsDao {
         showId: Long,
         date: LocalDate
     ): ServiceResult<List<Seat>>
+
+    suspend fun isSeatAvailableForBooking(
+        theatreId: Long,
+        screenId: Long,
+        bookableShowId: Long,
+        seatId: Long
+    ): ServiceResult<Boolean>
 }
 
 class SeatsDaoImpl : SeatsDao {
@@ -106,6 +113,7 @@ class SeatsDaoImpl : SeatsDao {
                 it[hash] = ticketHash
                 it[paidAmount] = totalAmount
             }
+
             val ticketId = Tickets.select { Tickets.hash eq ticketHash }.map { it[Tickets.ticketId] }.first()
             defaultSeatIds.forEach { seatId ->
                 ConfirmedSeats.insert {
@@ -225,6 +233,31 @@ class SeatsDaoImpl : SeatsDao {
             } catch (e: Exception) {
                 catchBlock(e)
             }
+        }
+    }
+
+    override suspend fun isSeatAvailableForBooking(
+        theatreId: Long,
+        screenId: Long,
+        bookableShowId: Long,
+        seatId: Long
+    ): ServiceResult<Boolean> {
+        return try {
+            dbQuery {
+                DefaultSeats.select {
+                    (DefaultSeats.theatreId eq theatreId) and (DefaultSeats.screenId eq screenId) and (DefaultSeats.id eq seatId)
+                }.firstOrNull() ?: return@dbQuery ServiceResult.Failure(ErrorCodes.SEAT_NOT_EXISTS)
+
+                ConfirmedSeats.select {
+                    (ConfirmedSeats.showId eq bookableShowId) and (ConfirmedSeats.screenId eq screenId) and (ConfirmedSeats.seatId eq seatId)
+                }.firstOrNull()?.run {
+                    return@dbQuery ServiceResult.Failure(ErrorCodes.SEAT_ALREADY_BOOKED)
+                }
+
+                ServiceResult.Success(true)
+            }
+        } catch (e: Exception) {
+            ServiceResult.Failure(ErrorCodes.DATABASE_ERROR)
         }
     }
 }

@@ -1,5 +1,6 @@
 package dev.techullurgy.movieticketbooking.data.daos
 
+import dev.techullurgy.movieticketbooking.data.models.BookingStatus
 import dev.techullurgy.movieticketbooking.data.schema.*
 import dev.techullurgy.movieticketbooking.domain.models.*
 import dev.techullurgy.movieticketbooking.domain.utils.ErrorCodes
@@ -9,11 +10,8 @@ import dev.techullurgy.movieticketbooking.plugins.dbQuery
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalTime
 import org.jetbrains.exposed.exceptions.ExposedSQLException
-import org.jetbrains.exposed.sql.and
-import org.jetbrains.exposed.sql.insert
-import org.jetbrains.exposed.sql.select
+import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.transactions.TransactionManager
-import org.jetbrains.exposed.sql.update
 import java.sql.SQLIntegrityConstraintViolationException
 
 interface TheatresDao {
@@ -67,6 +65,20 @@ interface TheatresDao {
     suspend fun updateMovieFromScreen(
         theatreId: Long, screenId: Long, movieId: Long
     ): ServiceResult<Boolean>
+
+    suspend fun getBookableShowIdFor(
+        theatreId: Long,
+        screenId: Long,
+        movieId: Long,
+        showId: Long,
+        date: LocalDate
+    ): ServiceResult<Long>
+
+    suspend fun registerBooking(
+        bookableShowId: Long,
+        customer: Long,
+        seats: String
+    ): ServiceResult<Long>
 }
 
 internal class TheatresDaoImpl(
@@ -87,17 +99,17 @@ internal class TheatresDaoImpl(
         return try {
             dbQuery {
                 val bookableShow = (ShowTimingsTable innerJoin ScreenTable).slice(
-                        ShowTimingsTable.id,
-                        ScreenTable.id,
-                        ScreenTable.theatreId,
-                        ScreenTable.movieId
-                    ).select {
-                        (ShowTimingsTable.screenId eq screenId) and (ShowTimingsTable.id eq showTimingId) and (ScreenTable.movieId neq null)
-                    }.map {
-                        BookableShowTemp(
-                            movieId = it[ScreenTable.movieId]!!, theatreId = it[ScreenTable.theatreId]
-                        )
-                    }.firstOrNull() ?: return@dbQuery ServiceResult.Failure(ErrorCodes.UNABLE_TO_OPEN_TICKETS_FOR_SHOW)
+                    ShowTimingsTable.id,
+                    ScreenTable.id,
+                    ScreenTable.theatreId,
+                    ScreenTable.movieId
+                ).select {
+                    (ShowTimingsTable.screenId eq screenId) and (ShowTimingsTable.id eq showTimingId) and (ScreenTable.movieId neq null)
+                }.map {
+                    BookableShowTemp(
+                        movieId = it[ScreenTable.movieId]!!, theatreId = it[ScreenTable.theatreId]
+                    )
+                }.firstOrNull() ?: return@dbQuery ServiceResult.Failure(ErrorCodes.UNABLE_TO_OPEN_TICKETS_FOR_SHOW)
 
                 BookableShows.insert {
                     it[theatreId] = bookableShow.theatreId
@@ -127,17 +139,17 @@ internal class TheatresDaoImpl(
         return try {
             dbQuery {
                 val bookableShows = (ShowTimingsTable innerJoin ScreenTable).slice(
-                        ShowTimingsTable.id,
-                        ScreenTable.id,
-                        ScreenTable.theatreId,
-                        ScreenTable.movieId
-                    ).select { (ShowTimingsTable.screenId eq screenId) and (ScreenTable.movieId neq null) }.map {
-                        BookableShowTemp(
-                            movieId = it[ScreenTable.movieId]!!,
-                            theatreId = it[ScreenTable.theatreId],
-                            showTimingId = it[ShowTimingsTable.id]
-                        )
-                    }
+                    ShowTimingsTable.id,
+                    ScreenTable.id,
+                    ScreenTable.theatreId,
+                    ScreenTable.movieId
+                ).select { (ShowTimingsTable.screenId eq screenId) and (ScreenTable.movieId neq null) }.map {
+                    BookableShowTemp(
+                        movieId = it[ScreenTable.movieId]!!,
+                        theatreId = it[ScreenTable.theatreId],
+                        showTimingId = it[ShowTimingsTable.id]
+                    )
+                }
 
                 if (bookableShows.isEmpty()) {
                     return@dbQuery ServiceResult.Failure(ErrorCodes.UNABLE_TO_OPEN_TICKETS_FOR_SHOW)
@@ -201,6 +213,7 @@ internal class TheatresDaoImpl(
                 is SQLIntegrityConstraintViolationException -> {
                     ServiceResult.Failure(ErrorCodes.THEATRE_ALREADY_EXISTS)
                 }
+
                 else -> {
                     ServiceResult.Failure(ErrorCodes.DATABASE_ERROR)
                 }
@@ -321,8 +334,8 @@ internal class TheatresDaoImpl(
         return try {
             dbQuery {
                 val theatreIds = BookableShows.select {
-                        (BookableShows.movieId eq movieId) and (BookableShows.showDate greaterEq today())
-                    }.map { it[BookableShows.theatreId] }.toSet()
+                    (BookableShows.movieId eq movieId) and (BookableShows.showDate greaterEq today())
+                }.map { it[BookableShows.theatreId] }.toSet()
 
                 val result = mutableListOf<Theatre>().apply {
                     theatreIds.forEach { id ->
@@ -345,7 +358,10 @@ internal class TheatresDaoImpl(
         }
     }
 
-    override suspend fun getBookableDatesFromTheatreForMovie(theatreId: Long, movieId: Long): ServiceResult<List<LocalDate>> {
+    override suspend fun getBookableDatesFromTheatreForMovie(
+        theatreId: Long,
+        movieId: Long
+    ): ServiceResult<List<LocalDate>> {
         return try {
             dbQuery {
                 val dates = BookableShows.select {
@@ -368,15 +384,15 @@ internal class TheatresDaoImpl(
                 )
 
                 val bookableShowTemps = BookableShows.select {
-                        (BookableShows.movieId eq movieId) and (BookableShows.showDate eq date) and (BookableShows.theatreId eq theatreId)
-                    }.map {
-                        BookableShowTemp(
-                            id = it[BookableShows.id],
-                            screenId = it[BookableShows.screenId],
-                            showTimingId = it[BookableShows.showId],
-                            showDate = it[BookableShows.showDate]
-                        )
-                    }
+                    (BookableShows.movieId eq movieId) and (BookableShows.showDate eq date) and (BookableShows.theatreId eq theatreId)
+                }.map {
+                    BookableShowTemp(
+                        id = it[BookableShows.id],
+                        screenId = it[BookableShows.screenId],
+                        showTimingId = it[BookableShows.showId],
+                        showDate = it[BookableShows.showDate]
+                    )
+                }
 
                 val theatre = TheatresTable.select { (TheatresTable.id eq theatreId) }.map {
                     Theatre(
@@ -395,8 +411,9 @@ internal class TheatresDaoImpl(
                 screens.forEach {
                     val bookableShowFullDetails =
                         (BookableShows innerJoin ShowTimingsTable)
-                            .select { (ShowTimingsTable.theatreId eq theatreId) and (ShowTimingsTable.screenId eq it) and
-                                    (BookableShows.movieId eq movieId) and (BookableShows.showDate eq date)
+                            .select {
+                                (ShowTimingsTable.theatreId eq theatreId) and (ShowTimingsTable.screenId eq it) and
+                                        (BookableShows.movieId eq movieId) and (BookableShows.showDate eq date)
                             }
                             .map { BookableShowFullDetail(it[BookableShows.showDate], it[ShowTimingsTable.time]) }
 
@@ -433,7 +450,7 @@ internal class TheatresDaoImpl(
                     it[ScreenTable.movieId] = movieId
                 }
 
-                if(count > 0) {
+                if (count > 0) {
                     ServiceResult.Success(true)
                 } else {
                     ServiceResult.Failure(ErrorCodes.SCREEN_NOT_EXISTS)
@@ -453,10 +470,77 @@ internal class TheatresDaoImpl(
                         ServiceResult.Failure(ErrorCodes.DATABASE_ERROR)
                     }
                 }
+
                 else -> {
                     ServiceResult.Failure(ErrorCodes.DATABASE_ERROR)
                 }
             }
+        }
+    }
+
+    override suspend fun getBookableShowIdFor(
+        theatreId: Long,
+        screenId: Long,
+        movieId: Long,
+        showId: Long,
+        date: LocalDate
+    ): ServiceResult<Long> {
+        return try {
+            dbQuery {
+                val bookableShowId = BookableShows.select {
+                    (BookableShows.theatreId eq theatreId) and
+                            (BookableShows.screenId eq screenId) and
+                            (BookableShows.movieId eq movieId) and
+                            (BookableShows.showId eq showId) and
+                            (BookableShows.showDate eq date)
+                }.map { it[BookableShows.id] }.firstOrNull() ?: return@dbQuery ServiceResult.Failure(ErrorCodes.BOOKING_NOT_YET_OPEN_FOR_SHOW)
+
+                ServiceResult.Success(bookableShowId)
+            }
+        } catch (e: Exception) {
+            ServiceResult.Failure(ErrorCodes.DATABASE_ERROR)
+        }
+    }
+
+    private suspend fun isBookingPendingForSeat(
+        bookableShowId: Long,
+        seat: String
+    ): Boolean {
+        return try {
+            dbQuery {
+                Bookings.select { (Bookings.bookableShowId eq bookableShowId) and
+                        (Bookings.seats like "%$seat%") and
+                        (Bookings.status eq BookingStatus.PENDING)
+                }.firstOrNull() != null
+            }
+        } catch (e: Exception) {
+            false
+        }
+    }
+
+    override suspend fun registerBooking(
+        bookableShowId: Long,
+        customer: Long,
+        seats: String
+    ): ServiceResult<Long> {
+        val seatIds = seats.split(",")
+        for(seat in seatIds) {
+            if(isBookingPendingForSeat(bookableShowId, seat)) {
+                return ServiceResult.Failure(ErrorCodes.UNABLE_TO_BOOK_THE_TICKET)
+            }
+        }
+
+        return try {
+            dbQuery {
+                val booking = Bookings.insert {
+                    it[Bookings.bookableShowId] = bookableShowId
+                    it[customerId] = customer
+                    it[Bookings.seats] = seats
+                }
+                ServiceResult.Success(booking[Bookings.id])
+            }
+        } catch (e: Exception) {
+            ServiceResult.Failure(ErrorCodes.DATABASE_ERROR)
         }
     }
 }
