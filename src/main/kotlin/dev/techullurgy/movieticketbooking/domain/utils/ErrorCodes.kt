@@ -15,4 +15,5 @@ enum class ErrorCodes(val message: String) {
     SHOW_TIMING_NOT_EXISTS("The Requested Show Timing not exists in our database"),
     UNABLE_TO_OPEN_TICKETS_FOR_SHOW("Unable to Open the tickets for the selected show"),
     UNABLE_TO_BOOK_THE_TICKET("Unable to Book the ticket for the selected show"),
+    BOOKING_NOT_FOUND("This Booking is not available in our database"),
 }

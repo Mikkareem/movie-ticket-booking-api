@@ -43,6 +43,8 @@ interface SeatsDao {
         bookableShowId: Long,
         seatId: Long
     ): ServiceResult<Boolean>
+
+    suspend fun calculatePrice(bookableShowId: Long, seats: Set<Long>): ServiceResult<Double>
 }
 
 class SeatsDaoImpl : SeatsDao {
@@ -255,6 +257,23 @@ class SeatsDaoImpl : SeatsDao {
                 }
 
                 ServiceResult.Success(true)
+            }
+        } catch (e: Exception) {
+            ServiceResult.Failure(ErrorCodes.DATABASE_ERROR)
+        }
+    }
+
+    override suspend fun calculatePrice(bookableShowId: Long, seats: Set<Long>): ServiceResult<Double> {
+        return try {
+            dbQuery {
+                val screenId = BookableShows.select { BookableShows.id eq bookableShowId }.map { it[BookableShows.screenId] }.first()
+
+                val totalPrice = DefaultSeats
+                    .slice(DefaultSeats.seatPrice.sum())
+                    .select { (DefaultSeats.screenId eq screenId) and (DefaultSeats.id inList seats) }
+                    .map { it[DefaultSeats.seatPrice.sum()] }.first()!!
+
+                ServiceResult.Success(totalPrice)
             }
         } catch (e: Exception) {
             ServiceResult.Failure(ErrorCodes.DATABASE_ERROR)

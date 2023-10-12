@@ -21,9 +21,11 @@ fun Application.configureRouting() {
         route("/show_list/{movie}/{theatre}" /*GET*/) { getBookableShowListFromTheatreRoute() }
         route("/seat_details/{movie}/{theatre}/{show}/{date}" /*GET*/) { getSeatDetailsRoute() }
         route("/open_tickets/{theatre}/{screen}/{show}/{date}" /*POST*/) { openTicketsForShowRoute() }
-        route("/book_ticket" /*POST*/) {}
+        route("/book_ticket" /*POST*/) { bookTicketRoute() }
         route("/my_tickets/{user_id}" /*GET*/) {}
         route("/ticket/{ticket_id}" /*GET*/) {}
+        route("/payment_success/{booking}" /*POST*/) { paymentSuccessRoute() }
+        route("/payment_failed/{booking}" /*POST*/) { paymentFailureRoute() }
 
         route("/test") {
             get {

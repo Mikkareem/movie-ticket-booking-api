@@ -9,6 +9,7 @@ val appModule = module {
     single<MoviesDao> { MoviesDaoImpl() }
     single<SeatsDao> { SeatsDaoImpl() }
     single<TheatresDao> { TheatresDaoImpl(get()) }
+    single<BookingsDao> { BookingsDaoImpl() }
     single { GetMovieByNameUseCase(get()) }
     single { GetRecommendedMoviesUseCase(get()) }
     single { GetSeatDetailsForShowUseCase(get()) }
@@ -22,4 +23,7 @@ val appModule = module {
     single { GetBookableMoviesUseCase(get()) }
     single { UpdateMovieInScreenUseCase(get()) }
     single { BookTicketUseCase(get(), get()) }
+    single { CalculatePriceUseCase(get(), get()) }
+    single { GenerateTicketUseCase(get(), get()) }
+    single { CancelBookingUseCase(get()) }
 }
