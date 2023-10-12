@@ -1,14 +1,12 @@
 package dev.techullurgy.movieticketbooking.routes
 
 import dev.techullurgy.movieticketbooking.domain.usecases.CancelBookingUseCase
-import dev.techullurgy.movieticketbooking.domain.usecases.GenerateTicketUseCase
 import dev.techullurgy.movieticketbooking.domain.utils.ServiceResult
 import io.ktor.http.*
 import io.ktor.server.application.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import org.koin.ktor.ext.inject
-import java.lang.NumberFormatException
 
 fun Route.paymentFailureRoute() {
     val cancelBookingUseCase by inject<CancelBookingUseCase>()
