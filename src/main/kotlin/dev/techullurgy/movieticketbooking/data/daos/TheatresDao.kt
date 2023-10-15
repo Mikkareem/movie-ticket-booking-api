@@ -56,7 +56,7 @@ interface TheatresDao {
 
     suspend fun getTheatreListForMovieFromToday(movieId: Long): ServiceResult<List<Theatre>>
 
-    suspend fun getBookableDatesFromTheatreForMovie(theatreId: Long, movieId: Long): ServiceResult<List<LocalDate>>
+    suspend fun getBookableDatesFromTheatreForMovie(theatreId: Long, movieId: Long): ServiceResult<Set<LocalDate>>
 
     suspend fun getBookableShowsFromTheatreForMovie(
         theatreId: Long, movieId: Long, date: LocalDate
@@ -361,13 +361,13 @@ internal class TheatresDaoImpl(
     override suspend fun getBookableDatesFromTheatreForMovie(
         theatreId: Long,
         movieId: Long
-    ): ServiceResult<List<LocalDate>> {
+    ): ServiceResult<Set<LocalDate>> {
         return try {
             dbQuery {
                 val dates = BookableShows.select {
                     (BookableShows.movieId eq movieId) and (BookableShows.showDate greaterEq today()) and (BookableShows.theatreId eq theatreId)
-                }.map { it[BookableShows.showDate] }
-                ServiceResult.Success(dates)
+                }.orderBy(BookableShows.showDate).map { it[BookableShows.showDate] }
+                ServiceResult.Success(dates.toSet())
             }
         } catch (e: Exception) {
             ServiceResult.Failure(ErrorCodes.DATABASE_ERROR)
@@ -415,7 +415,7 @@ internal class TheatresDaoImpl(
                                 (ShowTimingsTable.theatreId eq theatreId) and (ShowTimingsTable.screenId eq it) and
                                         (BookableShows.movieId eq movieId) and (BookableShows.showDate eq date)
                             }
-                            .map { BookableShowFullDetail(it[BookableShows.showDate], it[ShowTimingsTable.time]) }
+                            .map { BookableShowFullDetail(it[BookableShows.id], it[BookableShows.showDate], it[ShowTimingsTable.time]) }
 
                     val screen = ScreenTable.select { ScreenTable.id eq it }.map { row ->
                         Screen(

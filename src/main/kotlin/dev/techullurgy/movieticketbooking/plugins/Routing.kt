@@ -19,7 +19,8 @@ fun Application.configureRouting() {
         route("/search/THEATRE/{name}" /*GET*/) {}
         route("find/MOVIE/{movie}") { getMovieByIdRoute() }
         route("/theatre_list/{movie}" /*GET*/) { getTheatresListForMovieRoute() }
-        route("/show_list/{movie}/{theatre}" /*GET*/) { getBookableShowListFromTheatreRoute() }
+        route("/show_dates/{movie}/{theatre}" /*GET*/) { getBookableDatesForMovieFromTheatreRoute() }
+        route("/show_list/{movie}/{theatre}/{date}" /*GET*/) { getBookableShowListFromTheatreRoute() }
         route("/seat_details/{theatre}/{screen}/{show}/{date}" /*GET*/) { getSeatDetailsRoute() }
         route("/open_tickets/{theatre}/{screen}/{show}/{date}" /*POST*/) { openTicketsForShowRoute() }
         route("/book_ticket" /*POST*/) { bookTicketRoute() }
