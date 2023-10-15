@@ -26,4 +26,5 @@ val appModule = module {
     single { CalculatePriceUseCase(get(), get()) }
     single { GenerateTicketUseCase(get(), get()) }
     single { CancelBookingUseCase(get()) }
+    single { GetMovieById(get()) }
 }

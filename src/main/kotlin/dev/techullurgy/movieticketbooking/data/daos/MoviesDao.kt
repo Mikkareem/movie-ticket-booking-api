@@ -14,7 +14,7 @@ interface MoviesDao {
 
     suspend fun getMoviesByName(prefix: String): List<Movie>
 
-    suspend fun getMovieById(id: Long): Movie?
+    suspend fun getMovieById(id: Long): ServiceResult<Movie>
 
     suspend fun getAllMovies(): List<Movie>
 
@@ -39,12 +39,18 @@ class MoviesDaoImpl: MoviesDao {
         return true
     }
 
-    override suspend fun getMovieById(id: Long): Movie? {
-        return dbQuery {
-            MovieTable
-                .select { MovieTable.id eq id }
-                .map { it.toMovie() }
-                .firstOrNull()
+    override suspend fun getMovieById(id: Long): ServiceResult<Movie> {
+        return try {
+            dbQuery {
+                val movie = MovieTable
+                    .select { MovieTable.id eq id }
+                    .map { it.toMovie() }
+                    .firstOrNull() ?: return@dbQuery ServiceResult.Failure(ErrorCodes.MOVIE_NOT_EXISTS)
+
+                ServiceResult.Success(movie)
+            }
+        } catch(e: Exception) {
+            ServiceResult.Failure(ErrorCodes.DATABASE_ERROR)
         }
     }
 

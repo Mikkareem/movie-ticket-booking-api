@@ -8,6 +8,7 @@ import io.ktor.server.application.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import kotlinx.datetime.LocalDate
+import kotlinx.serialization.Serializable
 import org.koin.ktor.ext.inject
 import java.lang.NumberFormatException
 
@@ -65,7 +66,7 @@ fun Route.getSeatDetailsRoute() {
             return@get
         }
 
-        val response = GetSeatDetailsResponse(
+        val response = GetSeatDetailsSuccessResponse(
             theatreId = theatreId,
             screenId = screenId,
             showId = showId,
@@ -76,6 +77,18 @@ fun Route.getSeatDetailsRoute() {
     }
 }
 
-private data class GetSeatDetailsResponse(
-    val theatreId: Long, val screenId: Long, val showId: Long, val orderDate: LocalDate, val seats: List<SeatWithStatus>
+@Serializable
+private data class GetSeatDetailsSuccessResponse(
+    val theatreId: Long,
+    val screenId: Long,
+    val showId: Long,
+    val orderDate: LocalDate,
+    val seats: List<SeatWithStatus>,
+    val success: Boolean = true
+)
+
+@Serializable
+private data class GetSeatDetailsFailureResponse(
+    val message: String,
+    val success: Boolean = false
 )

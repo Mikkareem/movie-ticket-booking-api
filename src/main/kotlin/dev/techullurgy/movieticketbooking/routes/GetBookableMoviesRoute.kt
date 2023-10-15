@@ -29,6 +29,7 @@ private data class GetBookableMoviesSuccessResponse(
     val success: Boolean = true
 )
 
+@Serializable
 private data class GetBookableMoviesFailureResponse(
     val message: String,
     val success: Boolean = false
