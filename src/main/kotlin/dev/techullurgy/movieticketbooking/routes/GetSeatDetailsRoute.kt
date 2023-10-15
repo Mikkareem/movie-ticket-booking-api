@@ -20,11 +20,11 @@ fun Route.getSeatDetailsRoute() {
             try {
                 it.toLong()
             } catch (e: NumberFormatException) {
-                call.respond(message = "Theatre id is not valid", status = HttpStatusCode.BadRequest)
+                call.respond(message = GetSeatDetailsFailureResponse("Theatre id is not valid"), status = HttpStatusCode.BadRequest)
                 return@get
             }
         } ?: run {
-            call.respond(message = "Theatre id is missing", status = HttpStatusCode.BadRequest)
+            call.respond(message = GetSeatDetailsFailureResponse("Theatre id is missing"), status = HttpStatusCode.BadRequest)
             return@get
         }
 
@@ -32,11 +32,11 @@ fun Route.getSeatDetailsRoute() {
             try {
                 it.toLong()
             } catch (e: NumberFormatException) {
-                call.respond(message = "Screen id is not valid", status = HttpStatusCode.BadRequest)
+                call.respond(message = GetSeatDetailsFailureResponse("Screen id is not valid"), status = HttpStatusCode.BadRequest)
                 return@get
             }
         } ?: run {
-            call.respond(message = "Screen id is missing", status = HttpStatusCode.BadRequest)
+            call.respond(message = GetSeatDetailsFailureResponse("Screen id is missing"), status = HttpStatusCode.BadRequest)
             return@get
         }
 
@@ -44,16 +44,34 @@ fun Route.getSeatDetailsRoute() {
             try {
                 it.toLong()
             } catch (e: NumberFormatException) {
-                call.respond(message = "Show id is not valid", status = HttpStatusCode.BadRequest)
+                call.respond(message = GetSeatDetailsFailureResponse("Show id is not valid"), status = HttpStatusCode.BadRequest)
                 return@get
             }
         } ?: run {
-            call.respond(message = "Show id is missing", status = HttpStatusCode.BadRequest)
+            call.respond(message = GetSeatDetailsFailureResponse("Show id is missing"), status = HttpStatusCode.BadRequest)
             return@get
         }
 
-        val orderDate = call.parameters["date"]?.let { LocalDate.parse(it) } ?: run {
-            call.respond(message = "Order date is missing", status = HttpStatusCode.BadRequest)
+        val orderDate = call.parameters["date"]?.let {
+            try {
+                val dateComponents = it.split("-")
+                if(dateComponents.size != 3) throw Exception()
+
+                val day = dateComponents[0].toInt()
+                val month = dateComponents[1].toInt()
+                val year = dateComponents[2].toInt()
+
+                if(day <= 0 || month <= 0 || year <= 2000 || day > 31 || month > 12) {
+                    throw Exception()
+                }
+
+                LocalDate(year, month, day)
+            } catch (e: Exception) {
+                call.respond(message = GetSeatDetailsFailureResponse("Order Date is not valid"), status = HttpStatusCode.BadRequest)
+                return@get
+            }
+        } ?: run {
+            call.respond(message = GetSeatDetailsFailureResponse("Order date is missing"), status = HttpStatusCode.BadRequest)
             return@get
         }
 
@@ -62,7 +80,7 @@ fun Route.getSeatDetailsRoute() {
         )
 
         if (seatDetailsResult is ServiceResult.Failure) {
-            call.respond(message = seatDetailsResult.errorCode.message, status = HttpStatusCode.BadRequest)
+            call.respond(message = GetSeatDetailsFailureResponse(seatDetailsResult.errorCode.message), status = HttpStatusCode.BadRequest)
             return@get
         }
 
