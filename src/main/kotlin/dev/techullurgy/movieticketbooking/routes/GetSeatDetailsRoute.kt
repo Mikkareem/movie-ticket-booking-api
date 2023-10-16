@@ -1,6 +1,7 @@
 package dev.techullurgy.movieticketbooking.routes
 
 import dev.techullurgy.movieticketbooking.domain.models.SeatWithStatus
+import dev.techullurgy.movieticketbooking.domain.usecases.GetScreenByIdUseCase
 import dev.techullurgy.movieticketbooking.domain.usecases.GetSeatDetailsForShowUseCase
 import dev.techullurgy.movieticketbooking.domain.utils.ServiceResult
 import io.ktor.http.*
@@ -14,6 +15,7 @@ import java.lang.NumberFormatException
 
 fun Route.getSeatDetailsRoute() {
     val getSeatDetailsForShow by inject<GetSeatDetailsForShowUseCase>()
+    val getScreenByIdUseCase by inject<GetScreenByIdUseCase>()
 
     get {
         val theatreId = call.parameters["theatre"]?.let {
@@ -84,11 +86,22 @@ fun Route.getSeatDetailsRoute() {
             return@get
         }
 
+        val screenResult = getScreenByIdUseCase(theatreId, screenId)
+
+        if (screenResult is ServiceResult.Failure) {
+            call.respond(message = GetSeatDetailsFailureResponse(screenResult.errorCode.message), status = HttpStatusCode.BadRequest)
+            return@get
+        }
+
+        val screen = (screenResult as ServiceResult.Success).data
+
         val response = GetSeatDetailsSuccessResponse(
             theatreId = theatreId,
             screenId = screenId,
             showId = showId,
             orderDate = orderDate,
+            totalRows = screen.rows,
+            totalCols = screen.cols,
             seats = (seatDetailsResult as ServiceResult.Success).data
         )
         call.respond(message = response, status = HttpStatusCode.OK)
@@ -101,6 +114,8 @@ private data class GetSeatDetailsSuccessResponse(
     val screenId: Long,
     val showId: Long,
     val orderDate: LocalDate,
+    val totalRows: Int,
+    val totalCols: Int,
     val seats: List<SeatWithStatus>,
     val success: Boolean = true
 )

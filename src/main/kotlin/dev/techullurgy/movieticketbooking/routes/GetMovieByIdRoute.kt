@@ -1,7 +1,7 @@
 package dev.techullurgy.movieticketbooking.routes
 
 import dev.techullurgy.movieticketbooking.domain.models.Movie
-import dev.techullurgy.movieticketbooking.domain.usecases.GetMovieById
+import dev.techullurgy.movieticketbooking.domain.usecases.GetMovieByIdUseCase
 import dev.techullurgy.movieticketbooking.domain.utils.ServiceResult
 import io.ktor.http.*
 import io.ktor.server.application.*
@@ -12,7 +12,7 @@ import org.koin.ktor.ext.inject
 import java.lang.NumberFormatException
 
 fun Route.getMovieByIdRoute() {
-    val getMovieById by inject<GetMovieById>()
+    val getMovieByIdUseCase by inject<GetMovieByIdUseCase>()
 
     get {
         val movieId = call.parameters["movie"]?.let {
@@ -27,7 +27,7 @@ fun Route.getMovieByIdRoute() {
             return@get
         }
 
-        val result = getMovieById(movieId)
+        val result = getMovieByIdUseCase(movieId)
         if(result is ServiceResult.Failure) {
             call.respond(message = GetMovieByIdFailureResponse(result.errorCode.message), status = HttpStatusCode.BadRequest)
         } else {
